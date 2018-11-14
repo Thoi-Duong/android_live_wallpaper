@@ -6,6 +6,8 @@ import android.content.pm.ConfigurationInfo
 import android.opengl.GLSurfaceView
 import android.support.v7.app.AppCompatActivity
 import android.os.Bundle
+import android.view.MotionEvent
+import android.view.View
 import android.widget.Toast
 
 class MainActivity : AppCompatActivity() {
@@ -33,6 +35,29 @@ class MainActivity : AppCompatActivity() {
             Toast.makeText(this, "This device dose not support OpenGL ES 2.0.", Toast.LENGTH_LONG).show()
             return
         }
+
+        mSurfaceView.setOnTouchListener(object : View.OnTouchListener{
+            var previousX = 0f
+            var previousY = 0f
+
+            override fun onTouch(v: View?, event: MotionEvent?): Boolean {
+                if (event == null) return false
+
+                if (event!!.action == MotionEvent.ACTION_DOWN) {
+                    previousX = event!!.x
+                    previousY = event!!.y
+                } else if (event!!.action == MotionEvent.ACTION_MOVE) {
+                    val deltaX = event!!.x - previousX
+                    val deltaY = event!!.y - previousY
+
+                    previousX = event!!.x
+                    previousY = event!!.y
+
+                    mSurfaceView.queueEvent { particles.handleTouchDrag(deltaX, deltaY) }
+                }
+                return true
+            }
+        })
 
         setContentView(mSurfaceView)
     }

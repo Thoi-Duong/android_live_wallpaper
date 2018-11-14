@@ -19,5 +19,5 @@ void main() {
     /*
     gl_PointSize = 10.0;
     */
-    gl_PointSize = 5.0;
+    gl_PointSize = 10.0;
 }
