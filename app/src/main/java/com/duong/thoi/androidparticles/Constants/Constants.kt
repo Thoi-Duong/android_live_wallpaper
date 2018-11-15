@@ -6,4 +6,5 @@ package com.duong.thoi.androidparticles.Constants
 
 object Constants {
     const val BYTES_PER_FLOAT = 4
+    const val BYTES_PER_SHORT = 2
 }
