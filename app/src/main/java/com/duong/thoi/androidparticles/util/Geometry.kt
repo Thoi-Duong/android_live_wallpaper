@@ -30,6 +30,8 @@ class Vector(val x: Float, val y: Float, val z: Float) {
     fun dotProduct(other: Vector): Float = x * other.x + y * other.y + z * other.z
 
     fun scale(f: Float): Vector = Vector(x * f, y * f, z * f)
+
+    fun normalize(): Vector = scale(1f / length())
 }
 
 class Ray(val point: Point, val vector: Vector)

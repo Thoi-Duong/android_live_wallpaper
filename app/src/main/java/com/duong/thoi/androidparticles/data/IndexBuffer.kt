@@ -32,6 +32,7 @@ class IndexBuffer(indexData: ShortArray) {
                 .order(ByteOrder.nativeOrder())
                 .asShortBuffer()
                 .put(indexData)
+
         indexArray.position(0)
 
         // Transfer data from native memory to the GPU buffer.

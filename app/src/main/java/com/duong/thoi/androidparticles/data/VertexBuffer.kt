@@ -20,7 +20,8 @@ class VertexBuffer(vertexData: FloatArray) {
 
         glBindBuffer(GL_ARRAY_BUFFER, buffers[0])
 
-        val vertexArray = ByteBuffer.allocateDirect(vertexData.size * BYTES_PER_FLOAT)
+        val vertexArray = ByteBuffer
+                .allocateDirect(vertexData.size * BYTES_PER_FLOAT)
                 .order(ByteOrder.nativeOrder())
                 .asFloatBuffer()
                 .put(vertexData)

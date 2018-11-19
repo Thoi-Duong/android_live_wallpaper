@@ -43,15 +43,15 @@ class MainActivity : AppCompatActivity() {
             override fun onTouch(v: View?, event: MotionEvent?): Boolean {
                 if (event == null) return false
 
-                if (event!!.action == MotionEvent.ACTION_DOWN) {
-                    previousX = event!!.x
-                    previousY = event!!.y
+                if (event.action == MotionEvent.ACTION_DOWN) {
+                    previousX = event.x
+                    previousY = event.y
                 } else if (event!!.action == MotionEvent.ACTION_MOVE) {
-                    val deltaX = event!!.x - previousX
-                    val deltaY = event!!.y - previousY
+                    val deltaX = event.x - previousX
+                    val deltaY = event.y - previousY
 
-                    previousX = event!!.x
-                    previousY = event!!.y
+                    previousX = event.x
+                    previousY = event.y
 
                     mSurfaceView.queueEvent { particles.handleTouchDrag(deltaX, deltaY) }
                 }

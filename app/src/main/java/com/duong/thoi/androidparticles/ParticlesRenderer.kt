@@ -22,7 +22,7 @@ import android.opengl.Matrix.multiplyMM
 import android.opengl.Matrix.setIdentityM
 import com.duong.thoi.androidparticles.objects.Heightmap
 import com.duong.thoi.androidparticles.progams.HeightmapShaderProgram
-
+import android.opengl.Matrix.multiplyMV
 
 
 
@@ -58,6 +58,13 @@ class ParticlesRenderer(private val context: Context): Renderer {
     private var xRotation = 0f
     private var yRotation = 0f
 
+    private val vectorToLight = floatArrayOf(0.30f, 0.35f, -0.89f, 0f)
+    private val modelViewMatrix = FloatArray(16)
+    private val it_modelViewMatrix = FloatArray(16)
+
+    private val pointLightPositions = floatArrayOf(-1f, 1f, 0f, 1f, 0f, 1f, 0f, 1f, 1f, 1f, 0f, 1f)
+    private val pointLightColors = floatArrayOf(1.00f, 0.20f, 0.02f, 0.02f, 0.25f, 0.02f, 0.02f, 0.20f, 1.00f)
+
 
     override fun onSurfaceCreated(gl: GL10?, config: EGLConfig?) {
         glClearColor(0f, 0f, 0f, 0.0f)
@@ -75,13 +82,6 @@ class ParticlesRenderer(private val context: Context): Renderer {
 
         skyboxProgram = SkyboxShaderProgram(context)
         skybox = Skybox()
-        skyboxTexture = TextureHelper.loadCubeMap(context
-                , intArrayOf(R.drawable.left
-                , R.drawable.right
-                , R.drawable.bottom
-                , R.drawable.top
-                , R.drawable.front
-                , R.drawable.back))
 
         val particleDirection = Vector(0f, 1f, -1f)
 
@@ -109,12 +109,15 @@ class ParticlesRenderer(private val context: Context): Renderer {
                 speedVariance)
 
         particleTexture = TextureHelper.loadTexture(context, R.drawable.particle_texture)
+
+        skyboxTexture = TextureHelper.loadCubeMap(context,
+                intArrayOf(R.drawable.night_left, R.drawable.night_right, R.drawable.night_bottom, R.drawable.night_top, R.drawable.night_front, R.drawable.night_back))
     }
 
     override fun onSurfaceChanged(gl: GL10?, width: Int, height: Int) {
         glViewport(0, 0, width, height)
 
-        MatrixHelper.perspectiveM(projectionMatrix, 45f, width.toFloat()/height.toFloat(), 1f, 10f)
+        MatrixHelper.perspectiveM(projectionMatrix, 45f, width.toFloat()/height.toFloat(), 1f, 100f)
 
         updateViewMatrices()
     }
@@ -129,48 +132,34 @@ class ParticlesRenderer(private val context: Context): Renderer {
 
     private fun drawHeightmap() {
         setIdentityM(modelMatrix, 0)
+
         // Expand the heightmap's dimensions, but don't expand the height as
         // much so that we don't get insanely tall mountains.
         scaleM(modelMatrix, 0, 100f, 10f, 100f)
         updateMvpMatrix()
-        heightmapProgram!!.useProgram()
-        heightmapProgram!!.setUniforms(modelViewProjectionMatrix)
-        heightmap!!.bindData(heightmapProgram!!)
-        heightmap!!.draw()
-    }
 
-    fun handleTouchDrag(deltaX: Float, deltaY: Float) {
-        xRotation += deltaX / 32f
-        yRotation += deltaY / 32f
+        heightmapProgram?.useProgram()
+        /*
+        heightmapProgram.setUniforms(modelViewProjectionMatrix, vectorToLight);
+         */
 
-        yRotation = if (yRotation < -90) -90f else if (yRotation > 90) 90f else yRotation
+        // Put the light positions into eye space.
+        val vectorToLightInEyeSpace = FloatArray(4)
+        val pointPositionsInEyeSpace = FloatArray(12)
+        multiplyMV(vectorToLightInEyeSpace, 0, viewMatrix, 0, vectorToLight, 0)
+        multiplyMV(pointPositionsInEyeSpace, 0, viewMatrix, 0, pointLightPositions, 0)
+        multiplyMV(pointPositionsInEyeSpace, 4, viewMatrix, 0, pointLightPositions, 4)
+        multiplyMV(pointPositionsInEyeSpace, 8, viewMatrix, 0, pointLightPositions, 8)
 
-        updateViewMatrices()
-    }
-
-    private fun updateMvpMatrix() {
-        multiplyMM(tempMatrix, 0, viewMatrix, 0, modelMatrix, 0)
-        multiplyMM(modelViewProjectionMatrix, 0, projectionMatrix, 0, tempMatrix, 0)
-    }
-
-    private fun updateMvpMatrixForSkybox() {
-        multiplyMM(tempMatrix, 0, viewMatrixForSkybox, 0, modelMatrix, 0)
-        multiplyMM(modelViewProjectionMatrix, 0, projectionMatrix, 0, tempMatrix, 0)
-    }
-
-    private fun updateViewMatrices() {
-        setIdentityM(viewMatrix, 0)
-
-        rotateM(viewMatrix, 0, -yRotation, 1f, 0f, 0f)
-        rotateM(viewMatrix, 0, -xRotation, 0f, 1f, 0f)
-        System.arraycopy(viewMatrix, 0, viewMatrixForSkybox, 0, viewMatrix.size)
-        // We want the translation to apply to the regular view matrix, and not // the skybox.
-        translateM(viewMatrix, 0, 0f, -1.5f, -5f)
+        heightmapProgram?.setUniforms(modelViewMatrix, it_modelViewMatrix,
+                modelViewProjectionMatrix, vectorToLightInEyeSpace,
+                pointPositionsInEyeSpace, pointLightColors)
+        heightmap?.bindData(heightmapProgram!!)
+        heightmap?.draw()
     }
 
     private fun drawSkybox(){
         setIdentityM(modelMatrix, 0)
-
         updateMvpMatrixForSkybox()
 
         glDepthFunc(GL_LEQUAL)
@@ -183,16 +172,17 @@ class ParticlesRenderer(private val context: Context): Renderer {
 
         glDepthFunc(GL_LESS)
     }
+
     private fun drawParticles(){
         val currentTime = (System.nanoTime() - globalStartTime) / 1000000000f
 
-        redParticleShooter!!.position = Point(-Math.sin(currentTime.toDouble()).toFloat(), 0.5f, -Math.cos(currentTime.toDouble()).toFloat())
+//        redParticleShooter!!.position = Point(-Math.sin(currentTime.toDouble()).toFloat(), 0.5f, -Math.cos(currentTime.toDouble()).toFloat())
         redParticleShooter!!.addParticles(particleSystem, currentTime, 20)
 
-        greenParticleShooter!!.position = Point(-Math.cos(currentTime.toDouble()).toFloat(), -Math.sin(currentTime.toDouble()).toFloat(), -0.5f)
+//        greenParticleShooter!!.position = Point(-Math.cos(currentTime.toDouble()).toFloat(), -Math.sin(currentTime.toDouble()).toFloat(), -0.5f)
         greenParticleShooter!!.addParticles(particleSystem, currentTime, 10)
 
-        blueParticleShooter!!.position = Point(Math.sin(currentTime.toDouble()).toFloat(), 0.5f, Math.cos(currentTime.toDouble()).toFloat())
+//        blueParticleShooter!!.position = Point(Math.sin(currentTime.toDouble()).toFloat(), 0.5f, Math.cos(currentTime.toDouble()).toFloat())
         blueParticleShooter!!.addParticles(particleSystem, currentTime, 20)
 
 
@@ -210,5 +200,37 @@ class ParticlesRenderer(private val context: Context): Renderer {
 
         glDisable(GL_BLEND)
         glDepthMask(true)
+    }
+
+    fun handleTouchDrag(deltaX: Float, deltaY: Float) {
+        xRotation += deltaX / 32f
+        yRotation += deltaY / 32f
+
+        yRotation = if (yRotation < -90) -90f else if (yRotation > 90) 90f else yRotation
+
+        updateViewMatrices()
+    }
+
+
+    private fun updateMvpMatrix() {
+        multiplyMM(modelViewMatrix, 0, viewMatrix, 0, modelMatrix, 0)
+        invertM(tempMatrix, 0, modelViewMatrix, 0)
+        transposeM(it_modelViewMatrix, 0, tempMatrix, 0);
+        multiplyMM(modelViewProjectionMatrix, 0, projectionMatrix, 0, modelViewMatrix, 0)
+    }
+
+    private fun updateMvpMatrixForSkybox() {
+        multiplyMM(tempMatrix, 0, viewMatrixForSkybox, 0, modelMatrix, 0)
+        multiplyMM(modelViewProjectionMatrix, 0, projectionMatrix, 0, tempMatrix, 0)
+    }
+
+    private fun updateViewMatrices() {
+        setIdentityM(viewMatrix, 0)
+
+        rotateM(viewMatrix, 0, -yRotation, 1f, 0f, 0f)
+        rotateM(viewMatrix, 0, -xRotation, 0f, 1f, 0f)
+        System.arraycopy(viewMatrix, 0, viewMatrixForSkybox, 0, viewMatrix.size)
+        // We want the translation to apply to the regular view matrix, and not // the skybox.
+        translateM(viewMatrix, 0, 0f, -1.5f, -5f)
     }
 }
